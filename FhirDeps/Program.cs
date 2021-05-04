@@ -1,13 +1,11 @@
-﻿using System;
+﻿using Hl7.Fhir.Model;
+using Hl7.Fhir.Rest;
+using Newtonsoft.Json;
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
-
-using Newtonsoft.Json;
-
-using Hl7.Fhir.Rest;
-using Hl7.Fhir.Model;
 
 namespace FhirDeps
 {
@@ -35,38 +33,42 @@ namespace FhirDeps
             var searchParams = new SearchParams();
             searchParams.Add("practitioner.name", "kidman");
 
-            searchParams.Include.Add(("PractitionerRole:service", IncludeModifier.None));
-            searchParams.Include.Add(("PractitionerRole:practitioner", IncludeModifier.None));
-            searchParams.Include.Add(("PractitionerRole:location", IncludeModifier.None));
-            searchParams.Include.Add(("PractitionerRole:endpoint", IncludeModifier.None));
+            searchParams.Include("PractitionerRole:service", IncludeModifier.None);
+            searchParams.Include("PractitionerRole:practitioner", IncludeModifier.None);
+            searchParams.Include("PractitionerRole:location", IncludeModifier.None);
+            searchParams.Include("PractitionerRole:endpoint", IncludeModifier.None);
 
             var bundle = client.Search<PractitionerRole>(searchParams);
 
-            foreach (var bundleEntry in bundle.Entry.Where(e => e.Resource is PractitionerRole && e.Search.Mode == Bundle.SearchEntryMode.Match))
-            {
-                var role = bundleEntry.Resource as PractitionerRole;
-                var endpointUrl = ResourceReferenceExtensions.GetAbsoluteUriForReference(role.Endpoint.First(), bundleEntry.FullUrl);
-
-                var service = FindResource<HealthcareService>(bundle, role.HealthcareService.FirstOrDefault());
-                var location = FindResource<Location>(bundle, role.Location.FirstOrDefault());
-                var practitioner = FindResource<Practitioner>(bundle, role.Practitioner);
-                var endpoint = FindResource<Endpoint>(bundle, role.Endpoint.FirstOrDefault());
-
-                var entry = new
+            var results = bundle.Entry
+                .Where(e => e.Search.Mode == Bundle.SearchEntryMode.Match)
+                .Select(bundleEntry =>
                 {
-                    Name = role.Practitioner.Display,
-                    Surname = null as string,
-                    Speciality = role.Specialty.FirstOrDefault()?.Text,
-                    TypeName = service?.Type.FirstOrDefault()?.Text,
-                    Organisation = role.Organization.Display,
-                    Source = endpoint?.ManagingOrganization.Display,
-                    ConnectivityType = endpoint?.ConnectionType.Code,
-                    Location = location?.Name,
-                    ProviderDirectoryUrl = bundleEntry.FullUrl
-                };
+                    var role = bundleEntry.Resource as PractitionerRole;
+                    var endpointUrl = ResourceReferenceExtensions.GetAbsoluteUriForReference(role.Endpoint.First(), bundleEntry.FullUrl);
 
-                Console.WriteLine(JsonConvert.SerializeObject(entry));
-            }
+                    var service = FindResource<HealthcareService>(bundle, role.HealthcareService.FirstOrDefault());
+                    var location = FindResource<Location>(bundle, role.Location.FirstOrDefault());
+                    var practitioner = FindResource<Practitioner>(bundle, role.Practitioner);
+                    var endpoint = FindResource<Endpoint>(bundle, role.Endpoint.FirstOrDefault());
+
+                    return new
+                    {
+                        Name = role.Practitioner.Display,
+                        Surname = null as string,
+                        Speciality = role.Specialty.FirstOrDefault()?.Text,
+                        TypeName = service?.Type.FirstOrDefault()?.Text,
+                        Organisation = role.Organization.Display,
+                        Source = endpoint?.ManagingOrganization.Display,
+                        ConnectivityType = endpoint?.ConnectionType.Code,
+                        Location = location?.Name,
+                        ProviderDirectoryUrl = bundleEntry.FullUrl
+                    };
+                })
+                .ToArray();
+
+            foreach (var result in results)
+                Console.WriteLine(JsonConvert.SerializeObject(result));
         }
 
         static void FetchHealthcareService()
@@ -77,36 +79,40 @@ namespace FhirDeps
             var searchParams = new SearchParams();
             searchParams.Add("name", "fernside");
 
-            searchParams.Include.Add(("HealthcareService:organization", IncludeModifier.None));
-            searchParams.Include.Add(("HealthcareService:location", IncludeModifier.None));
-            searchParams.Include.Add(("HealthcareService:endpoint", IncludeModifier.None));
+            searchParams.Include("HealthcareService:organization", IncludeModifier.None);
+            searchParams.Include("HealthcareService:location", IncludeModifier.None);
+            searchParams.Include("HealthcareService:endpoint", IncludeModifier.None);
 
             var bundle = client.Search<HealthcareService>(searchParams);
 
-            foreach (var bundleEntry in bundle.Entry.Where(e => e.Resource is HealthcareService && e.Search.Mode == Bundle.SearchEntryMode.Match))
-            {
-                var service = bundleEntry.Resource as HealthcareService;
-                var endpointUrl = ResourceReferenceExtensions.GetAbsoluteUriForReference(service.Endpoint.First(), bundleEntry.FullUrl);
-
-                var location = FindResource<Location>(bundle, service.Location.FirstOrDefault());
-                var endpoint = FindResource<Endpoint>(bundle, service.Endpoint.FirstOrDefault());
-                var organization = FindResource<Organization>(bundle, service.ProvidedBy);
-
-                var entry = new
+            var results = bundle.Entry
+                .Where(e => e.Search.Mode == Bundle.SearchEntryMode.Match)
+                .Select(bundleEntry =>
                 {
-                    Name = service.Name,
-                    Surname = null as string,
-                    Speciality = service.Specialty.FirstOrDefault()?.Text,
-                    TypeName = service.Type.FirstOrDefault()?.Text,
-                    Organisation = organization?.Name,
-                    Source = endpoint?.ManagingOrganization.Display,
-                    ConnectivityType = endpoint?.ConnectionType.Code,
-                    Location = location?.Name,
-                    ProviderDirectoryUrl = bundleEntry.FullUrl
-                };
+                    var service = bundleEntry.Resource as HealthcareService;
+                    var endpointUrl = ResourceReferenceExtensions.GetAbsoluteUriForReference(service.Endpoint.First(), bundleEntry.FullUrl);
 
-                Console.WriteLine(JsonConvert.SerializeObject(entry));
-            }
+                    var location = FindResource<Location>(bundle, service.Location.FirstOrDefault());
+                    var endpoint = FindResource<Endpoint>(bundle, service.Endpoint.FirstOrDefault());
+                    var organization = FindResource<Organization>(bundle, service.ProvidedBy);
+
+                    return new
+                    {
+                        Name = service.Name,
+                        Surname = null as string,
+                        Speciality = service.Specialty.FirstOrDefault()?.Text,
+                        TypeName = service.Type.FirstOrDefault()?.Text,
+                        Organisation = organization?.Name,
+                        Source = endpoint?.ManagingOrganization.Display,
+                        ConnectivityType = endpoint?.ConnectionType.Code,
+                        Location = location?.Name,
+                        ProviderDirectoryUrl = bundleEntry.FullUrl
+                    };
+                })
+                .ToArray();
+
+            foreach (var result in results)
+                Console.WriteLine(JsonConvert.SerializeObject(result));
         }
 
         static void SearchPractitionerRole()
@@ -153,11 +159,13 @@ namespace FhirDeps
             //TestExpand();
         }
 
-        private static T FindResource<T>(Bundle bundle, ResourceReference reference) =>
-            bundle.Entry
-                .Where(entry => $"{entry.Resource.TypeName}/{entry.Resource.Id}" == reference.Reference)
-                .Select(x => x.Resource)
-                .OfType<T>()
-                .FirstOrDefault();
+        private static T FindResource<T>(Bundle bundle, ResourceReference reference) where T : Resource =>
+            reference == null 
+                ? null 
+                : bundle.Entry
+                    .Where(entry => $"{entry.Resource.TypeName}/{entry.Resource.Id}" == reference.Reference) // FIXME
+                    .Select(x => x.Resource)
+                    .OfType<T>()
+                    .FirstOrDefault();
     }
 }
