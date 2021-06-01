@@ -17,12 +17,18 @@ namespace FhirDeps
                 @"C:\Ccare\Development\Certificates\NASH\Millennium Health Service - 8003623233353381.p12",
                 "Pass-123");
 
-            var handler = new WebRequestHandler();
-            handler.ClientCertificates.Add(clientCertificate);
+            // use WebRequestHandler for FHIR 2.x and newer
+            //var handler = new WebRequestHandler();
+            //handler.ClientCertificates.Add(clientCertificate);
 
-            return new FhirClient(
-                "https://sandbox.digitalhealth.gov.au/FhirServerR4-PDA/fhir/",
-                messageHandler: handler);
+            var client = new FhirClient(
+                "https://sandbox.digitalhealth.gov.au/FhirServerR4-PDA/fhir/");
+
+            // use OnBeforeRequest for FHIR 1.9 and prior
+            client.OnBeforeRequest += (sender, e) =>
+                e.RawRequest.ClientCertificates.Add(clientCertificate);
+            
+            return client;
         }
 
         static void FetchPractitionerRole()
