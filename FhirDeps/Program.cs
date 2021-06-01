@@ -33,10 +33,10 @@ namespace FhirDeps
             var searchParams = new SearchParams();
             searchParams.Add("practitioner.name", "kidman");
 
-            searchParams.Include("PractitionerRole:service", IncludeModifier.None);
-            searchParams.Include("PractitionerRole:practitioner", IncludeModifier.None);
-            searchParams.Include("PractitionerRole:location", IncludeModifier.None);
-            searchParams.Include("PractitionerRole:endpoint", IncludeModifier.None);
+            searchParams.Include("PractitionerRole:service");
+            searchParams.Include("PractitionerRole:practitioner");
+            searchParams.Include("PractitionerRole:location");
+            searchParams.Include("PractitionerRole:endpoint");
 
             var bundle = client.Search<PractitionerRole>(searchParams);
 
@@ -79,9 +79,9 @@ namespace FhirDeps
             var searchParams = new SearchParams();
             searchParams.Add("name", "fernside");
 
-            searchParams.Include("HealthcareService:organization", IncludeModifier.None);
-            searchParams.Include("HealthcareService:location", IncludeModifier.None);
-            searchParams.Include("HealthcareService:endpoint", IncludeModifier.None);
+            searchParams.Include("HealthcareService:organization");
+            searchParams.Include("HealthcareService:location");
+            searchParams.Include("HealthcareService:endpoint");
 
             var bundle = client.Search<HealthcareService>(searchParams);
 
