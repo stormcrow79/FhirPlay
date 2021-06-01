@@ -31,7 +31,8 @@ namespace FhirDeps
             var client = CreateClient();
 
             var searchParams = new SearchParams();
-            searchParams.Add("practitioner.name", "kidman");
+            //searchParams.Add("practitioner.name", "kidman");
+            searchParams.Add("_id", "97784e9f6c7a489f9d23a40a43161e14");
 
             searchParams.Include("PractitionerRole:service", IncludeModifier.None);
             searchParams.Include("PractitionerRole:practitioner", IncludeModifier.None);
@@ -130,30 +131,95 @@ namespace FhirDeps
             }
         }
 
+        static void TestValidate()
+        {
+            var client = new FhirClient(
+                "https://stu3.ontoserver.csiro.au/fhir", // correct
+                //"https://stu3.ontoserver.csiro.au/fhir/CodeSystem/$lookup?_format=json", // incorrect - dunno how/why it works
+                new FhirClientSettings() { Timeout = 10000 });
+
+            try
+            {
+                // before
+                if (false)
+                {
+                    var query = new Parameters()
+                      .Add("url", new FhirUri("http://snomed.info/sct?fhir_vs"))
+                      .Add("system", new FhirString("http://snomed.info/sct"))
+                      .Add("code", new FhirString("16373008"))
+                      .Add("count", new Integer(3))
+                      .Add("offset", new Integer(0))
+                      .Add("includeDesignations", new FhirBoolean(true));
+
+                    var result = client.TypeOperation<Parameters>("expand", query, true) as Parameters;
+                    Console.WriteLine($"validate: {result.Parameter?.FirstOrDefault(x => x.Name == "display")?.Value?.ToString()}");
+                }
+
+                // after
+                {
+                    var result = client.ConceptLookup(
+                        new Code("16373008"),
+                        new FhirUri("http://snomed.info/sct"));
+                    Console.WriteLine($"validate: {result.GetSingleValue<FhirString>("display")}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
         static void TestExpand()
         {
-            //var json = new WebClient().DownloadString("https://r4.ontoserver.csiro.au/fhir/ValueSet/$expand?url=http://snomed.info/sct?fhir_vs=ecl/%3C394658006");
+            // https://stu3.ontoserver.csiro.au/fhir - 20210228
+            // https://r4.ontoserver.csiro.au/fhir - FAIL
 
-            // http://snomed.info/sct?fhir_vs=ecl%2F%3C394658006&count=1000&activeOnly=true
             var client = new FhirClient(
-                "https://r4.ontoserver.csiro.au/fhir/");
+                "https://r4.ontoserver.csiro.au/fhir/",
+                new FhirClientSettings() { Timeout = 10000 });
 
-            var p = new Parameters()
-                .Add("url", new FhirUri("http://snomed.info/sct?fhir_vs=ecl/<394658006"))
-                .Add("count", new Integer(1000))
-                .Add("activeOnly", new FhirBoolean(true));
-            var result = client.TypeOperation<ValueSet>("expand", p, true);
+            try
+            {
+                if (true)
+                {
+                    var parameter = new Parameters()
+                        .Add("url", new FhirUri("http://snomed.info/sct?fhir_vs=ecl/<394658006"))
+                        .Add("count", new Integer(1000))
+                        .Add("activeOnly", new FhirBoolean(true));
+                    var valueSet = client.TypeOperation<ValueSet>("expand", parameter, true) as ValueSet;
 
+                    var inactive = valueSet.Expansion.Contains.Where(c => c.Inactive == true).ToArray();
+                    Console.WriteLine($"expand: {valueSet.Expansion.Contains.Count} ({inactive.Length} inactive)");
+                    foreach (var concept in valueSet.Expansion.Contains.Take(10))
+                        Console.WriteLine($"{concept.Code}\t{concept.Display}");
+                }
+
+                if (true)
+                {
+                    var valueSet = client.ExpandValueSet(
+                        new FhirUri("http://snomed.info/sct?fhir_vs=ecl/<394658006"));
+
+                    var inactive = valueSet.Expansion.Contains.Where(c => c.Inactive == true).ToArray();
+                    Console.WriteLine($"expand: {valueSet.Expansion.Contains.Count} ({inactive.Length} inactive)");
+                    foreach (var concept in valueSet.Expansion.Contains.Take(10))
+                        Console.WriteLine($"{concept.Code}\t{concept.Display}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         static void Main(string[] args)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            var ri = new ResourceIdentity("https://sandbox.digitalhealth.gov.au/FhirServerR4-PDA/fhir/PractitionerRole/97784e9f6c7a489f9d23a40a43161e14");
+            //TestValidate();
+            TestExpand();
 
-            FetchPractitionerRole();
-            FetchHealthcareService();
+            //FetchPractitionerRole();
+            //FetchHealthcareService();
 
             //SearchPractitionerRole();
             //TestExpand();
