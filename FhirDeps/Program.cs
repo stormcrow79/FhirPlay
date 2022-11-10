@@ -243,6 +243,28 @@ namespace FhirDeps
 
         }
 
+        static string token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IjJaUXBKM1VwYmpBWVhZR2FYRUpsOGxWMFRPSSIsImtpZCI6IjJaUXBKM1VwYmpBWVhZR2FYRUpsOGxWMFRPSSJ9.eyJhdWQiOiJodHRwczovL25wZC1vaWRjIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvMTI2MmJhMDItMjg0MS00NGZmLThjYzctZjk1ODE5M2ExNzI3LyIsImlhdCI6MTY2ODA2NjM0NiwibmJmIjoxNjY4MDY2MzQ2LCJleHAiOjE2NjgwNzAyNDYsImFpbyI6IkUyWmdZSmhUYlozRnIvT3BmTUtDNUcvSFpqdzJCd0E9IiwiYXBwaWQiOiJiYWIyZGI2Yy1lMzRmLTQ0MDItODg5Yi0wODMzNjI3Zjc0OTciLCJhcHBpZGFjciI6IjEiLCJpZHAiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8xMjYyYmEwMi0yODQxLTQ0ZmYtOGNjNy1mOTU4MTkzYTE3MjcvIiwib2lkIjoiYjlkOGQ5NjgtNmU4ZS00YWU4LWI1MGUtMjE0ODkyZjQ3YzZkIiwicmgiOiIwLkFXWUFBcnBpRWtFb18wU014X2xZR1RvWEo2R3d1djhzLWFsQXR6UjN0RFppamxkbUFBQS4iLCJyb2xlcyI6WyJURVJNX0RFVl9GSElSIl0sInN1YiI6ImI5ZDhkOTY4LTZlOGUtNGFlOC1iNTBlLTIxNDg5MmY0N2M2ZCIsInRpZCI6IjEyNjJiYTAyLTI4NDEtNDRmZi04Y2M3LWY5NTgxOTNhMTcyNyIsInV0aSI6IkF0by1JRHVlcEUyUGdXWFhTanhFQVEiLCJ2ZXIiOiIxLjAifQ.uk9dVwSK00WtuD1simiqtgug_H2L1XUfmHf6Kj68KuI3PRl2BPacn8dpLN324_f8DKKAE02dYZMkGQlMKLGhck72635rk_PVBVpqRUkCgSTmnEOCRsZOg4_TAGbSuL3hRZYXrWAHOtYocWDcBA6VNNoAAcdkibwT264FDq5SYBxlKzg82Co8Sw1xzEGVMJOUhoy_Upbsqock3Fp4rVLWPV3fERKBBmBPppOStnfaNBiPYf2qIE0-pAAsxKH1eFm1TaajS0IWc0lkRzknfzE1-WBhtzvoeMqerK2c7DgPv8dbzxft4BE-EwKCk0CreHVgqCqcjxQGe01RWjA4DRNAcA";
+
+        static void TestLookup()
+        {
+            //var endpoint = "https://r4.ontoserver.csiro.au/fhir/";
+            //var endpoint = "https://api.healthterminologies.gov.au/integration/R4/fhir";
+            var endpoint = "https://api.dev.telstrahealth.com/terminology/fhir";
+            
+            var client = new FhirClient(endpoint);
+            client.OnBeforeRequest += (sender, e) =>
+            {
+                if (token != null)
+                    e.RawRequest.Headers.Add("Authorization", "Bearer " + token);
+            };
+
+            var p = new Parameters()
+                .Add("code", new FhirString("865922007"))
+                .Add("system", new FhirUri("http://snomed.info/sct"));
+            var result = client.TypeOperation<CodeSystem>("lookup", p) as Parameters;
+            Console.WriteLine(result.Parameter.FirstOrDefault(x => x.Name == "display")?.Value?.ToString());
+        }
+
         static void Main(string[] args)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -254,6 +276,8 @@ namespace FhirDeps
 
             //SearchPractitionerRole();
             //TestExpand();
+
+            TestLookup();
         }
 
         private static T FindResource<T>(Bundle bundle, ResourceReference reference) where T : Resource =>
