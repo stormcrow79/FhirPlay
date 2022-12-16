@@ -128,6 +128,11 @@ namespace FhirDeps
 
             var (bundle, matches) = PagedSearch<PractitionerRole>(client, searchParams);
 
+            Console.WriteLine();
+            Console.WriteLine($"match count: {Matches(bundle).Select(x => x.Resource.Id).Distinct().Count()}");
+            Console.WriteLine($"include count: {bundle.Entry.Where(e => e.Search.Mode == Bundle.SearchEntryMode.Include).Select(e => e.Resource.Id).Distinct().Count()}");
+            ValidateBundle(bundle);
+
             var serializer = new Hl7.Fhir.Serialization.FhirJsonSerializer();
             File.WriteAllText("bundle.json", serializer.SerializeToString(bundle));
 
