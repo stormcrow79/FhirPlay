@@ -28,6 +28,37 @@ namespace FhirDeps
         private static bool Exists(Bundle bundle, string type, string id) =>
             bundle.Entry.Exists(e => e.Resource.TypeName == type && e.Resource.Id == id);
 
+        private static SearchParams PatchSearchParams(SearchParams original, Uri continuationUrl)
+        {
+            var parameters = continuationUrl.Query
+                .Trim('?')
+                .Split('&')
+                .Select(s =>
+                {
+                    var x = s.Split('=');
+                    return Tuple.Create(x[0], x[1]);
+                });
+            var continuationParams = SearchParams.FromUriParamList(parameters);
+
+            foreach (var originalInclude in original.Include)
+            {
+                if (!continuationParams.Include.Contains(originalInclude))
+                    continuationParams.Include.Add(originalInclude);
+            }
+
+            return continuationParams;
+        }
+
+        private static void ValidateBundle(Bundle bundle)
+        {
+            foreach (var role in Matches(bundle).Select(e => e.Resource).OfType<PractitionerRole>())
+            {
+                var identity = new ResourceIdentity(role.Practitioner.Reference);
+                if (!Exists(bundle, identity.ResourceType, identity.Id))
+                    Console.WriteLine($"    broken link PractitionerRole/{role.Id} -> {identity}");
+            }
+        }
+
         private static (Bundle Bundle, Bundle.EntryComponent[] Matches) PagedSearch<TResource>(
             FhirClient client,
             SearchParams searchParams,
@@ -52,12 +83,16 @@ namespace FhirDeps
                 // TODO: use ILogger
                 Debug.WriteLine($"retrieving search result page {pageIndex++} via {nextUri}");
 
-                var page = client.Get(nextUri) as Bundle
-                           ?? throw new InvalidOperationException("search returned other than Bundle");
+                var continationParams = PatchSearchParams(searchParams, nextUri);
+                var page = client.Search<TResource>(continationParams);
+
+                //var page = client.Get(nextUri) as Bundle
+                //           ?? throw new InvalidOperationException("search returned other than Bundle");
 
                 Debug.WriteLine($"  matches: {page.Entry.Count(x => x.Search.Mode == Bundle.SearchEntryMode.Match)}");
                 Debug.WriteLine($"  includes: {page.Entry.Count(x => x.Search.Mode == Bundle.SearchEntryMode.Include)}");
 
+                ValidateBundle(page);
 
                 foreach (var entry in page.Entry)
                 {
@@ -82,6 +117,7 @@ namespace FhirDeps
 
             var searchParams = new SearchParams();
             searchParams.Add("practitioner.name", "christian");
+            //searchParams.Add("size", "2000");
             searchParams.Count = 5;
 
             //searchParams.Include("PractitionerRole:service");
